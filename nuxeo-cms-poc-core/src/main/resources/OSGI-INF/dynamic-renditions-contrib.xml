@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="org.nuxeo.ecm.cms.renditions">
+
+  <require>org.nuxeo.ecm.platform.rendition.contrib</require>
+
+  <extension target="org.nuxeo.ecm.platform.rendition.service.RenditionService"
+    point="renditionDefinitionProviders">
+
+    <renditionDefinitionProvider name="dynamicRenditionDefinitionProvider"
+      class="org.nuxeo.ecm.cms.rendition.DynamicRenditionDefinitionProvider">
+<!--       <filters>
+        <filter-id>hasDynamicRenditions</filter-id>
+      </filters> -->
+    </renditionDefinitionProvider>
+
+  </extension>
+
+  <extension target="org.nuxeo.ecm.platform.actions.ActionService"
+    point="filters">
+
+    <filter id="hasDynamicRenditions">
+      <rule grant="true">
+        <facet>dynamicRenditions</facet>
+      </rule>
+    </filter>
+
+  </extension>
+
+</component>

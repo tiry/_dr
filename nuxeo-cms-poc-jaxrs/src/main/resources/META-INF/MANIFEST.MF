@@ -1,0 +1,9 @@
+Bundle-ActivationPolicy: lazy
+Bundle-ClassPath: .
+Manifest-Version: 1.0
+Bundle-Version: 1.0.0
+Bundle-Name: nuxeo-cms-poc-jaxrs
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: org.nuxeo.ecm.platform.restapi.server.cms;singleton=true
+Fragment-Host: org.nuxeo.ecm.platform.restapi.server
+Bundle-Vendor: Nuxeo

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:nxs="http://www.nuxeo.org/ecm/schemas/dynrendition" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://www.nuxeo.org/ecm/schemas/dynrendition">
+
+  <xs:include schemaLocation="core-types.xsd"/>
+
+  <xs:element name="renditions" type="nxs:renditions"/>
+
+  <xs:complexType name="renditions">
+    <xs:sequence>
+      <xs:element maxOccurs="unbounded" minOccurs="0" name="item" type="nxs:rendition"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="rendition">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="converter" type="xs:string"/>
+      <xs:element name="content" type="nxs:content"/>
+      <xs:element name="params" type="nxs:converterParams" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="converterParams">
+    <xs:sequence>
+      <xs:element maxOccurs="unbounded" minOccurs="0" name="item" type="nxs:converterParam"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="converterParam">
+    <xs:sequence>
+      <xs:element name="key" type="xs:string" />
+      <xs:element name="value" type="xs:string" />
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>
