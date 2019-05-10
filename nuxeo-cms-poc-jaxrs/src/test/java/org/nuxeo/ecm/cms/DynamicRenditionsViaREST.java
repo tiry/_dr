@@ -27,23 +27,24 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.Serializable;
 import java.net.URL;
+import java.util.List;
 import java.util.StringJoiner;
 
 import javax.imageio.ImageIO;
 import javax.ws.rs.core.MultivaluedMap;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.nuxeo.ecm.cms.rendition.DynamicRendition;
+import org.nuxeo.ecm.cms.rendition.adapter.DynamicRenditionHolder;
 import org.nuxeo.ecm.core.api.Blob;
-import org.nuxeo.ecm.core.api.Blobs;
 import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.core.api.IdRef;
 import org.nuxeo.ecm.core.api.impl.blob.FileBlob;
 import org.nuxeo.ecm.core.convert.api.ConversionService;
 import org.nuxeo.ecm.core.test.annotations.Granularity;
 import org.nuxeo.ecm.core.test.annotations.RepositoryConfig;
 import org.nuxeo.ecm.restapi.server.jaxrs.cms.adapter.CMSDynamicRenditionAdapter;
-import org.nuxeo.ecm.restapi.server.jaxrs.cms.adapter.DynamicRenditionObject;
 import org.nuxeo.ecm.restapi.test.BaseTest;
 import org.nuxeo.ecm.restapi.test.RestServerFeature;
 import org.nuxeo.jaxrs.test.CloseableClientResponse;
@@ -58,60 +59,75 @@ import com.sun.jersey.core.util.MultivaluedMapImpl;
 @RunWith(FeaturesRunner.class)
 @Features({ RestServerFeature.class })
 @RepositoryConfig(cleanup = Granularity.METHOD, init = RestServerInit.class)
+@Deploy("org.nuxeo.ecm.platform.rendition.api")
+@Deploy("org.nuxeo.ecm.platform.rendition.core")
+@Deploy({ "org.nuxeo.ecm.platform.picture.api" })
+@Deploy({ "org.nuxeo.ecm.platform.picture.core" })
 @Deploy({ "org.nuxeo.ecm.platform.picture.convert" })
 @Deploy({ "org.nuxeo.ecm.platform.restapi.server.cms" })
-
+@Deploy({ "org.nuxeo.ecm.cms.nuxeo-cms-poc-core" })
 public class DynamicRenditionsViaREST extends BaseTest {
 
 	@Inject
-	ConversionService cs;
+	protected ConversionService cs;
 
 	protected static final String TEST_IMG = "astro.png";
 	protected static final int IMG_WIDTH = 400;
 	protected static final int IMG_HEIGHT = 514;
+	protected static final int NEW_SIZE = 51;
+	protected static final String DYN_RENDITION_NAME = "dynamicCrop";
 
 	protected String createDocument(File srcImgFile) {
-		
-		DocumentModel doc = session.createDocumentModel("/", "myImg", "File");
-        Blob blob = new FileBlob(srcImgFile);
-        doc.setPropertyValue("file:content", (Serializable) blob);
-        doc = session.createDocument(doc);
 
-        TransactionHelper.commitOrRollbackTransaction();
-        TransactionHelper.startTransaction();
-        return doc.getId();
+		DocumentModel doc = session.createDocumentModel("/", "myImg", "File");
+		Blob blob = new FileBlob(srcImgFile);
+		blob.setMimeType("image/png");
+		blob.setFilename(TEST_IMG);
+		doc.setPropertyValue("file:content", (Serializable) blob);
+		doc = session.createDocument(doc);
+
+		TransactionHelper.commitOrRollbackTransaction();
+		TransactionHelper.startTransaction();
+		return doc.getId();
 	}
-	
+
 	@Test
 	public void shoudCallAdapter() throws Exception {
-		
+
 		URL url = this.getClass().getClassLoader().getResource(TEST_IMG);
 		File srcImgFile = new File(url.toURI());
-		BufferedImage sourceImg = ImageIO.read(srcImgFile);		
-					
+		BufferedImage sourceImg = ImageIO.read(srcImgFile);
+
 		// sanity checks
 		assertNotNull(cs);
 		assertTrue(cs.getRegistredConverters().contains("pictureCrop"));
 		assertEquals(IMG_WIDTH, sourceImg.getWidth());
 		assertEquals(IMG_HEIGHT, sourceImg.getHeight());
 
-		String docUid = createDocument(srcImgFile);		
+		// create the source document
+		String docUid = createDocument(srcImgFile);
 		assertEquals(200, getDoc(docUid).getStatus());
-				
-		
+
+		// call (and create) the conversion
 		MultivaluedMap<String, String> params = new MultivaluedMapImpl();
-		
 		params.add("converter", "pictureCrop");
-		params.add("width", "50");
-		params.add("height", "50");
-		
-		 try (CloseableClientResponse response = getDynamicRendition(docUid, "dynamicCrop", params)) {
-	            assertEquals(200, response.getStatus());
-	            
-	            String outcome = IOUtils.toString(response.getEntityInputStream(), "UTF-8");
-	            
-	        }
-		
+		params.add("width", Integer.toString(NEW_SIZE));
+		params.add("height", Integer.toString(NEW_SIZE));
+
+		try (CloseableClientResponse response = getDynamicRendition(docUid, DYN_RENDITION_NAME, params)) {
+			assertEquals(200, response.getStatus());
+
+			BufferedImage result = ImageIO.read(response.getEntityInputStream());
+			assertEquals(NEW_SIZE, result.getWidth());
+			assertEquals(NEW_SIZE, result.getHeight());
+		}
+
+		// check that the rendition is saved
+		DocumentModel source = session.getDocument(new IdRef(docUid));
+		List<DynamicRendition> registeredRenditions = source.getAdapter(DynamicRenditionHolder.class).getRenditions();
+		assertEquals(1, registeredRenditions.size());
+		assertTrue(registeredRenditions.get(0).getName().startsWith(DYN_RENDITION_NAME + "-"));
+
 	}
 
 	protected CloseableClientResponse getDoc(String docUid) {
