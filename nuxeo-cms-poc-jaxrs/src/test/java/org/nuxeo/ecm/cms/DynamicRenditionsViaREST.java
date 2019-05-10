@@ -21,6 +21,7 @@ package org.nuxeo.ecm.cms;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.awt.image.BufferedImage;
@@ -92,7 +93,7 @@ public class DynamicRenditionsViaREST extends BaseTest {
 	}
 
 	@Test
-	public void shoudCallAdapter() throws Exception {
+	public void shouldCreateAndStoreRendition() throws Exception {
 
 		URL url = this.getClass().getClassLoader().getResource(TEST_IMG);
 		File srcImgFile = new File(url.toURI());
@@ -130,6 +131,72 @@ public class DynamicRenditionsViaREST extends BaseTest {
 
 	}
 
+	@Test
+	public void shouldRespectAllowCreateFlag() throws Exception {
+
+		URL url = this.getClass().getClassLoader().getResource(TEST_IMG);
+		File srcImgFile = new File(url.toURI());
+		BufferedImage sourceImg = ImageIO.read(srcImgFile);
+
+		// create the source document
+		String docUid = createDocument(srcImgFile);
+
+		// call (and create) the conversion
+		MultivaluedMap<String, String> params = new MultivaluedMapImpl();
+		params.add("converter", "pictureCrop");
+		params.add("width", Integer.toString(NEW_SIZE));
+		params.add("height", Integer.toString(NEW_SIZE));
+		params.add("create", "false");
+
+		try (CloseableClientResponse response = getDynamicRendition(docUid, DYN_RENDITION_NAME, params)) {
+			assertEquals(400, response.getStatus());
+		}
+		
+		params.putSingle("create", "true");
+		try (CloseableClientResponse response = getDynamicRendition(docUid, DYN_RENDITION_NAME, params)) {
+			assertEquals(200, response.getStatus());
+		}
+	}
+
+	@Test
+	public void shouldCreateTransientRendition() throws Exception {
+
+		URL url = this.getClass().getClassLoader().getResource(TEST_IMG);
+		File srcImgFile = new File(url.toURI());
+		BufferedImage sourceImg = ImageIO.read(srcImgFile);
+
+		// sanity checks
+		assertNotNull(cs);
+		assertTrue(cs.getRegistredConverters().contains("pictureCrop"));
+		assertEquals(IMG_WIDTH, sourceImg.getWidth());
+		assertEquals(IMG_HEIGHT, sourceImg.getHeight());
+
+		// create the source document
+		String docUid = createDocument(srcImgFile);
+		assertEquals(200, getDoc(docUid).getStatus());
+
+		// call (and create) the conversion
+		MultivaluedMap<String, String> params = new MultivaluedMapImpl();
+		params.add("converter", "pictureCrop");
+		params.add("width", Integer.toString(NEW_SIZE));
+		params.add("height", Integer.toString(NEW_SIZE));
+		params.add("cache", "false");
+
+		try (CloseableClientResponse response = getDynamicRendition(docUid, DYN_RENDITION_NAME, params)) {
+			assertEquals(200, response.getStatus());
+
+			BufferedImage result = ImageIO.read(response.getEntityInputStream());
+			assertEquals(NEW_SIZE, result.getWidth());
+			assertEquals(NEW_SIZE, result.getHeight());
+		}
+
+		// check that the rendition is saved
+		DocumentModel source = session.getDocument(new IdRef(docUid));
+		assertNull(source.getAdapter(DynamicRenditionHolder.class));
+
+	}
+
+	
 	protected CloseableClientResponse getDoc(String docUid) {
 		StringJoiner path = new StringJoiner("/").add("id").add(docUid);
 		return getResponse(RequestType.GET, path.toString());

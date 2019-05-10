@@ -67,7 +67,7 @@ public class DynamicRenditionPreComputeWork extends AbstractWork {
 		DynamicRenditionHolder holder = doc.getAdapter(DynamicRenditionHolder.class);
 		
 		BlobHolder bh = DynamicRenditionExecutor.exec(doc, converterName, params);
-		holder.storeRenditionResult(renditionName, bh.getBlob());
+		holder.storeRenditionResult(renditionName, bh.getBlob(), true);
 
 	}
 

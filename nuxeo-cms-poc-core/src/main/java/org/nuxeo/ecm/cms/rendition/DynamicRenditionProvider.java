@@ -22,6 +22,7 @@ package org.nuxeo.ecm.cms.rendition;
 import java.util.Collections;
 import java.util.List;
 
+import org.nuxeo.ecm.cms.rendition.adapter.DynamicRenditionDocument;
 import org.nuxeo.ecm.cms.rendition.adapter.DynamicRenditionHolder;
 import org.nuxeo.ecm.cms.rendition.compute.DynamicRenditionExecutor;
 import org.nuxeo.ecm.core.api.Blob;
@@ -54,11 +55,16 @@ public class DynamicRenditionProvider implements RenditionProvider {
 
 		DynamicRendition dr = holder.getRendition(definition.getName());
 		Blob blob = dr.getBlob();
-
+		
 		if (blob == null) {
 			// just in time rendering
 			BlobHolder bh = DynamicRenditionExecutor.exec(doc, dr.getConverterName(), dr.getParams());
-			holder.storeRenditionResult(definition.getName(), bh.getBlob());
+			
+			// check if we need to cache or not			
+			Boolean save = (Boolean) doc.getContextData(DynamicRenditionDocument.CXT_SAVE_FLAG);
+			save = save==null || save;
+
+			holder.storeRenditionResult(definition.getName(), bh.getBlob(), save);
 
 			dr = holder.getRendition(definition.getName());
 			blob = dr.getBlob();

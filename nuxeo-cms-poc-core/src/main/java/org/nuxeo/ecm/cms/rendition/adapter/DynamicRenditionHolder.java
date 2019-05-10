@@ -39,5 +39,5 @@ public interface DynamicRenditionHolder {
 	
 	DynamicRendition getRendition(String name);
 	
-	void storeRenditionResult(String name, Blob blob);
+	void storeRenditionResult(String name, Blob blob, boolean save);
 }

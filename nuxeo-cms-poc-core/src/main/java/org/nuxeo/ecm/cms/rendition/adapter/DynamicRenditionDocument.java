@@ -51,6 +51,8 @@ public class DynamicRenditionDocument implements DynamicRenditionHolder {
 	public static final String RENDITION_NAME = "name";
 	public static final String FACET = "dynamicRenditions";
 
+	public static final String CXT_SAVE_FLAG = "saveDynamicRendition";
+	
 	protected DocumentModel doc;
 
 	public DynamicRenditionDocument(DocumentModel doc) {
@@ -94,12 +96,12 @@ public class DynamicRenditionDocument implements DynamicRenditionHolder {
 		return new DynamicRendition(name, converter, params, blob);
 	}
 
-	public void storeRenditionResult(String name, Blob blob) {
+	public void storeRenditionResult(String name, Blob blob, boolean save) {
 		DynamicRendition dr = getRendition(name);
 		if (dr != null) {
 			dr.setBlob(blob);
 		}
-		add(dr, true, false);
+		add(dr, save, false);
 	}
 
 	public void add(DynamicRendition newRendition, boolean save, boolean preRender) {

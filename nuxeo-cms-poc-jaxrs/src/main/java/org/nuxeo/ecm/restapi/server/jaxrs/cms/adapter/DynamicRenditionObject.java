@@ -25,7 +25,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MultivaluedMap;
@@ -40,6 +42,7 @@ import org.nuxeo.ecm.cms.rendition.adapter.DynamicRenditionDocument;
 import org.nuxeo.ecm.cms.rendition.adapter.DynamicRenditionHolder;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.platform.query.api.PageProviderService;
 import org.nuxeo.ecm.platform.rendition.Rendition;
 import org.nuxeo.ecm.platform.rendition.service.RenditionService;
 import org.nuxeo.ecm.webengine.model.WebObject;
@@ -69,14 +72,16 @@ public class DynamicRenditionObject extends DefaultObject {
 	}
 
 	@GET
-	public Object doGet(@Context Request request, @Context HttpHeaders headers, @Context UriInfo info) {
-
-		boolean allowCreate = true;
+	public Object doGet(@Context Request request, @Context HttpHeaders headers, @Context UriInfo info,
+			 @DefaultValue("true") @QueryParam("create") boolean allowCreate,
+			 @DefaultValue("true") @QueryParam("cache") boolean save) {
 
 		if (ECHO.equalsIgnoreCase(renditionName)) {
 			return echo(headers, info);
 		}
 
+		doc.putContextData(DynamicRenditionDocument.CXT_SAVE_FLAG,save);
+		
 		DynamicRenditionHolder rh = doc.getAdapter(DynamicRenditionHolder.class);
 		if (rh==null) {
 
@@ -85,7 +90,9 @@ public class DynamicRenditionObject extends DefaultObject {
 			} 
 			
 			DynamicRenditionDocument.create(doc);
-			doc = session.saveDocument(doc);		
+			if (save) {
+				doc = session.saveDocument(doc);
+			}
 			rh = doc.getAdapter(DynamicRenditionHolder.class);
 		}
 				
@@ -108,12 +115,13 @@ public class DynamicRenditionObject extends DefaultObject {
 				params.put(k, qp.getFirst(k));
 			}
 			dr = new DynamicRendition(dynRendionName, converterName, params);
-			rh.add(dr, true, false);
-			doc = session.getDocument(doc.getRef());
+			rh.add(dr, save, false);
+			if (save) {
+				doc = session.getDocument(doc.getRef());
+			}
 		}
 		
-		RenditionService rs = Framework.getService(RenditionService.class);
-		
+		RenditionService rs = Framework.getService(RenditionService.class);		
 		Rendition rendition = rs.getRendition(doc, dynRendionName);
 		
 		return rendition.getBlob();
